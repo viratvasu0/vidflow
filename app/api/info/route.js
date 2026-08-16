@@ -1,36 +1,59 @@
 ﻿import { NextResponse } from 'next/server';
-import ytdl from '@distube/ytdl-core';
 
 export async function POST(request) {
   try {
     const { url } = await request.json();
-    if (!url || !ytdl.validateURL(url)) {
+    if (!url) {
       return NextResponse.json({ error: 'Please enter a valid YouTube URL.' }, { status: 400 });
     }
 
-    // Pass custom agent options to bypass serverless IP blocks
-    const agent = ytdl.createAgent([]);
-    const info = await ytdl.getInfo(url, { agent });
+    // Extract Video ID
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    const videoId = (match && match[2].length === 11) ? match[2] : null;
 
-    const formats = info.formats
-      .filter(f => f.hasVideo || f.hasAudio)
-      .map(f => ({
-        itag: f.itag,
-        qualityLabel: f.qualityLabel || (f.hasAudio && !f.hasVideo ? `Audio Only (${f.audioBitrate || 128}kbps)` : 'Standard Quality'),
-        container: f.container || 'mp4',
-        hasVideo: Boolean(f.hasVideo),
-        hasAudio: Boolean(f.hasAudio)
-      }));
+    if (!videoId) {
+      return NextResponse.json({ error: 'Invalid YouTube URL structure.' }, { status: 400 });
+    }
 
+    // Request stream data via public proxy API
+    const response = await fetch(`https://api.cobalt.tools/api/json`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        videoQuality: 'max'
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.status === 'error' || data.status === 'picker') {
+      throw new Error(data.text || 'Extraction failed');
+    }
+
+    // Build standard format response
     return NextResponse.json({
-      title: info.videoDetails.title,
-      thumbnail: info.videoDetails.thumbnails.slice(-1)[0]?.url || '',
-      duration: parseInt(info.videoDetails.lengthSeconds || '0', 10),
-      author: info.videoDetails.author.name,
-      formats
+      title: `YouTube Video (${videoId})`,
+      thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      duration: 0,
+      author: 'YouTube Content',
+      formats: [
+        {
+          itag: 'cobalt_video',
+          qualityLabel: 'Best Quality Available (HD)',
+          container: 'mp4',
+          hasVideo: true,
+          hasAudio: true,
+          downloadUrl: data.url
+        }
+      ]
     });
   } catch (err) {
-    console.error('YTDL Fetch Error:', err);
-    return NextResponse.json({ error: 'YouTube blocked serverless request. Try again or check URL.' }, { status: 500 });
+    console.error('Extraction Error:', err);
+    return NextResponse.json({ error: 'Unable to process video link right now. Please verify the URL.' }, { status: 500 });
   }
 }

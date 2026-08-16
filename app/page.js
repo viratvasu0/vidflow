@@ -1,13 +1,12 @@
 ﻿'use client';
 import { useState } from 'react';
-import { Youtube, Download, Sparkles, Loader2, PlayCircle, Film, Music, ShieldAlert } from 'lucide-react';
+import { Youtube, Download, Sparkles, Loader2, PlayCircle, Film, ShieldAlert } from 'lucide-react';
 
 export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [videoData, setVideoData] = useState(null);
-  const [selectedItag, setSelectedItag] = useState('');
 
   const fetchInfo = async (e) => {
     e.preventDefault();
@@ -18,26 +17,16 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to analyze video');
       setVideoData(data);
-      if (data.formats?.length > 0) setSelectedItag(data.formats[0].itag);
     } catch (err) { setError(err.message); } finally { setLoading(false); }
   };
 
   const handleDownload = () => {
-    if (!url || !selectedItag || !videoData) return;
-    const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&itag=${selectedItag}&title=${encodeURIComponent(videoData.title)}`;
-    window.open(downloadUrl, '_blank');
-  };
-
-  const formatTime = (secs) => {
-    const m = Math.floor(secs / 60); const s = secs % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
+    if (!videoData?.formats?.[0]?.downloadUrl) return;
+    window.open(videoData.formats[0].downloadUrl, '_blank');
   };
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-between p-4 sm:p-8 overflow-hidden bg-slate-950 text-slate-100">
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-red-600/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
-      <div className="absolute top-1/2 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
-
       <header className="w-full max-w-4xl flex items-center justify-between py-4 z-10 border-b border-slate-800/80">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-to-tr from-red-600 to-rose-500 p-2.5 rounded-2xl shadow-lg shadow-red-500/20">
@@ -55,11 +44,10 @@ export default function Home() {
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight">
             Download YouTube Videos in <span className="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">Any Resolution</span>
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto">Paste your YouTube link below to extract HD video qualities and audio streams instantly.</p>
+          <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto">Paste your YouTube link below to extract HD video qualities instantly.</p>
         </div>
 
         <form onSubmit={fetchInfo} className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-rose-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
           <div className="relative flex flex-col sm:flex-row gap-2 bg-slate-900/90 border border-slate-800 p-2 rounded-2xl backdrop-blur-xl shadow-2xl">
             <div className="flex-1 flex items-center px-4 gap-3">
               <Youtube className="w-5 h-5 text-slate-500" />
@@ -80,39 +68,18 @@ export default function Home() {
         )}
 
         {videoData && (
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-6">
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
-              <div className="relative group rounded-2xl overflow-hidden shadow-lg border border-slate-800 flex-shrink-0 w-full sm:w-56">
-                <img src={videoData.thumbnail} alt={videoData.title} className="w-full aspect-video object-cover" />
-                <span className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-2 py-1 rounded-md text-xs font-medium text-slate-200">{formatTime(videoData.duration)}</span>
-              </div>
+              <img src={videoData.thumbnail} alt={videoData.title} className="w-full sm:w-56 aspect-video object-cover rounded-2xl shadow-lg border border-slate-800" />
               <div className="space-y-2 text-center sm:text-left flex-1">
-                <h2 className="text-lg font-bold text-slate-100 line-clamp-2 leading-snug">{videoData.title}</h2>
-                <p className="text-xs font-medium text-slate-400">Channel: {videoData.author}</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 pt-4 border-t border-slate-800">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Select Resolution / Stream Format</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto pr-1">
-                {videoData.formats.map((fmt, i) => {
-                  const isSelected = String(fmt.itag) === String(selectedItag);
-                  return (
-                    <button key={i} type="button" onClick={() => setSelectedItag(fmt.itag)} className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all duration-200 ${isSelected ? 'bg-red-600/10 border-red-500 text-white shadow-md shadow-red-500/10' : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}>
-                      <div className="flex items-center gap-2.5">
-                        {fmt.hasVideo ? <Film className="w-4 h-4 text-rose-400" /> : <Music className="w-4 h-4 text-emerald-400" />}
-                        <span className="text-sm font-semibold">{fmt.qualityLabel}</span>
-                      </div>
-                      <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">{fmt.container}</span>
-                    </button>
-                  );
-                })}
+                <h2 className="text-lg font-bold text-slate-100 line-clamp-2">{videoData.title}</h2>
+                <p className="text-xs font-medium text-slate-400">Stream Source Ready</p>
               </div>
             </div>
 
             <button onClick={handleDownload} className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition shadow-xl shadow-emerald-600/20">
               <Download className="w-5 h-5" />
-              <span>Download Selected File</span>
+              <span>Download HD File</span>
             </button>
           </div>
         )}
