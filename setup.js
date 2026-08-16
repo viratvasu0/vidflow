@@ -2,6 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 const files = {
+  'vercel.json': `{
+  "framework": "nextjs"
+}`,
+
   'package.json': `{
   "name": "vidflow",
   "version": "1.0.0",
@@ -28,7 +32,7 @@ const files = {
   'tailwind.config.js': `/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}"
   ],
   theme: {
     extend: {},
@@ -155,7 +159,7 @@ export async function GET(request) {
   'app/page.js': `'use client';
 
 import { useState } from 'react';
-import { Youtube, Download, Sparkles, Loader2, PlayCircle, Film, Music, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Youtube, Download, Sparkles, Loader2, PlayCircle, Film, Music, ShieldAlert } from 'lucide-react';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -207,11 +211,9 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-between p-4 sm:p-8 overflow-hidden">
-      {/* Background Animated Glows */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-red-600/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
       <div className="absolute top-1/2 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
 
-      {/* Header */}
       <header className="w-full max-w-4xl flex items-center justify-between py-4 z-10 border-b border-slate-800/80">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-to-tr from-red-600 to-rose-500 p-2.5 rounded-2xl shadow-lg shadow-red-500/20">
@@ -226,7 +228,6 @@ export default function Home() {
         </span>
       </header>
 
-      {/* Hero Section */}
       <main className="w-full max-w-3xl my-auto py-12 space-y-8 z-10">
         <div className="text-center space-y-4">
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight">
@@ -240,7 +241,6 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Input Form */}
         <form onSubmit={fetchInfo} className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-rose-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
           <div className="relative flex flex-col sm:flex-row gap-2 bg-slate-900/90 border border-slate-800 p-2 rounded-2xl backdrop-blur-xl shadow-2xl">
@@ -265,7 +265,6 @@ export default function Home() {
           </div>
         </form>
 
-        {/* Error Alert */}
         {error && (
           <div className="flex items-center gap-3 bg-red-950/40 border border-red-800/80 text-red-300 p-4 rounded-xl backdrop-blur-md text-sm">
             <ShieldAlert className="w-5 h-5 text-red-400 flex-shrink-0" />
@@ -273,7 +272,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Video Metadata Card */}
         {videoData && (
           <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
@@ -289,7 +287,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Resolution Selector Grid */}
             <div className="space-y-3 pt-4 border-t border-slate-800">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Select Resolution / Stream Format
@@ -321,7 +318,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Download Button */}
             <button
               onClick={handleDownload}
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition shadow-xl shadow-emerald-600/20"
@@ -333,7 +329,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="w-full max-w-4xl py-6 text-center text-xs text-slate-600 border-t border-slate-800/50 z-10">
         VidFlow Downloader — Next.js 14 App Router
       </footer>
@@ -350,4 +345,4 @@ Object.entries(files).forEach(([filepath, content]) => {
   console.log('Created:', filepath);
 });
 
-console.log('SUCCESS: All files generated cleanly!');
+console.log('SUCCESS: Structure created successfully!');
