@@ -1,112 +1,4 @@
-﻿const fs = require("fs");
-const path = require("path");
-
-const files = {
-  "vercel.json": JSON.stringify({ framework: "nextjs" }, null, 2),
-  "package.json": JSON.stringify({
-    name: "vidflow",
-    version: "1.0.0",
-    private: true,
-    scripts: { dev: "next dev", build: "next build", start: "next start" },
-    dependencies: {
-      "@distube/ytdl-core": "^4.15.8",
-      "lucide-react": "^0.427.0",
-      "next": "^14.2.5",
-      "react": "^18.3.1",
-      "react-dom": "^18.3.1"
-    },
-    devDependencies: {
-      "autoprefixer": "^10.4.20",
-      "postcss": "^8.4.41",
-      "tailwindcss": "^3.4.10"
-    }
-  }, null, 2),
-  "tailwind.config.js": `module.exports = { content: ["./app/**/*.{js,ts,jsx,tsx,mdx}"], theme: { extend: {} }, plugins: [] };`,
-  "postcss.config.js": `module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };`,
-  "next.config.mjs": `const nextConfig = { reactStrictMode: true }; export default nextConfig;`,
-  ".gitignore": `node_modules\n.next\nout\n.env*.local\ngenerate.js`,
-  "app/globals.css": `@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@keyframes pulse-slow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.05); }
-}
-.animate-pulse-slow { animation: pulse-slow 6s infinite ease-in-out; }`,
-
-  "app/layout.js": `import './globals.css';
-
-export const metadata = {
-  title: 'VidFlow — Next-Gen YouTube Downloader',
-  description: 'Download YouTube videos seamlessly in high quality.'
-};
-
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en" className="dark">
-      <body className="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-red-500 selection:text-white">
-        {children}
-      </body>
-    </html>
-  );
-}`,
-
-  "app/api/info/route.js": `import { NextResponse } from 'next/server';
-import ytdl from '@distube/ytdl-core';
-
-export async function POST(request) {
-  try {
-    const { url } = await request.json();
-    if (!url || !ytdl.validateURL(url)) {
-      return NextResponse.json({ error: 'Please enter a valid YouTube URL.' }, { status: 400 });
-    }
-    const info = await ytdl.getInfo(url);
-    const formats = info.formats
-      .filter(f => f.hasVideo || f.hasAudio)
-      .map(f => ({
-        itag: f.itag,
-        qualityLabel: f.qualityLabel || (f.hasAudio && !f.hasVideo ? \`Audio Only (\${f.audioBitrate || 128}kbps)\` : 'Standard Quality'),
-        container: f.container || 'mp4',
-        hasVideo: Boolean(f.hasVideo),
-        hasAudio: Boolean(f.hasAudio)
-      }));
-    return NextResponse.json({
-      title: info.videoDetails.title,
-      thumbnail: info.videoDetails.thumbnails.slice(-1)[0]?.url || '',
-      duration: parseInt(info.videoDetails.lengthSeconds || '0', 10),
-      author: info.videoDetails.author.name,
-      formats
-    });
-  } catch (err) {
-    return NextResponse.json({ error: 'Failed to extract video details. Try another link.' }, { status: 500 });
-  }
-}`,
-
-  "app/api/download/route.js": `import ytdl from '@distube/ytdl-core';
-
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const url = searchParams.get('url');
-  const itag = searchParams.get('itag');
-  const title = searchParams.get('title') || 'VidFlow_Video';
-  if (!url || !itag) return new Response('Missing parameters', { status: 400 });
-  try {
-    const info = await ytdl.getInfo(url);
-    const format = info.formats.find(f => String(f.itag) === String(itag));
-    const cleanTitle = title.replace(/[^a-zA-Z0-9 _-]/g, '') || 'download';
-    const ext = format?.container || (format?.hasVideo ? 'mp4' : 'mp3');
-    const stream = ytdl(url, { quality: parseInt(itag, 10) });
-    const headers = new Headers();
-    headers.set('Content-Disposition', \`attachment; filename="\${cleanTitle}.\${ext}"\`);
-    headers.set('Content-Type', format?.mimeType || 'video/mp4');
-    return new Response(stream, { headers });
-  } catch (err) {
-    return new Response('Download stream failed', { status: 500 });
-  }
-}`,
-
-  "app/page.js": `'use client';
+﻿'use client';
 import { useState } from 'react';
 import { Youtube, Download, Sparkles, Loader2, PlayCircle, Film, Music, ShieldAlert } from 'lucide-react';
 
@@ -132,13 +24,13 @@ export default function Home() {
 
   const handleDownload = () => {
     if (!url || !selectedItag || !videoData) return;
-    const downloadUrl = \`/api/download?url=\${encodeURIComponent(url)}&itag=\${selectedItag}&title=\${encodeURIComponent(videoData.title)}\`;
+    const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&itag=${selectedItag}&title=${encodeURIComponent(videoData.title)}`;
     window.open(downloadUrl, '_blank');
   };
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60); const s = secs % 60;
-    return \`\${m}:\${s < 10 ? '0' : ''}\${s}\`;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   return (
