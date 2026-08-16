@@ -8,13 +8,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Please enter a valid YouTube URL.' }, { status: 400 });
     }
 
-    const info = await ytdl.getInfo(url, {
-      requestOptions: {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      }
-    });
+    // Pass custom agent options to bypass serverless IP blocks
+    const agent = ytdl.createAgent([]);
+    const info = await ytdl.getInfo(url, { agent });
 
     const formats = info.formats
       .filter(f => f.hasVideo || f.hasAudio)
@@ -34,7 +30,7 @@ export async function POST(request) {
       formats
     });
   } catch (err) {
-    console.error('YTDL Error:', err);
-    return NextResponse.json({ error: 'Failed to extract video details. Try another link.' }, { status: 500 });
+    console.error('YTDL Fetch Error:', err);
+    return NextResponse.json({ error: 'YouTube blocked serverless request. Try again or check URL.' }, { status: 500 });
   }
 }
