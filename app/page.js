@@ -1,12 +1,13 @@
 ﻿'use client';
 import { useState } from 'react';
-import { Youtube, Download, Sparkles, Loader2, PlayCircle, Film, ShieldAlert } from 'lucide-react';
+import { Youtube, Download, Sparkles, Loader2, PlayCircle, Film, Music, ShieldAlert } from 'lucide-react';
 
 export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [videoData, setVideoData] = useState(null);
+  const [selectedItag, setSelectedItag] = useState('');
 
   const fetchInfo = async (e) => {
     e.preventDefault();
@@ -17,12 +18,20 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to analyze video');
       setVideoData(data);
+      if (data.formats?.length > 0) setSelectedItag(data.formats[0].itag);
     } catch (err) { setError(err.message); } finally { setLoading(false); }
   };
 
   const handleDownload = () => {
-    if (!videoData?.formats?.[0]?.downloadUrl) return;
-    window.open(videoData.formats[0].downloadUrl, '_blank');
+    const stream = videoData?.formats?.find(f => String(f.itag) === String(selectedItag));
+    if (!stream?.downloadUrl) return;
+    window.open(stream.downloadUrl, '_blank');
+  };
+
+  const formatTime = (secs) => {
+    if (!secs) return '';
+    const m = Math.floor(secs / 60); const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   return (
@@ -44,7 +53,7 @@ export default function Home() {
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight">
             Download YouTube Videos in <span className="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">Any Resolution</span>
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto">Paste your YouTube link below to extract HD video qualities instantly.</p>
+          <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto">Paste your YouTube link below to extract HD video qualities and audio streams instantly.</p>
         </div>
 
         <form onSubmit={fetchInfo} className="relative group">
@@ -70,16 +79,39 @@ export default function Home() {
         {videoData && (
           <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-6">
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
-              <img src={videoData.thumbnail} alt={videoData.title} className="w-full sm:w-56 aspect-video object-cover rounded-2xl shadow-lg border border-slate-800" />
+              <div className="relative rounded-2xl overflow-hidden shadow-lg border border-slate-800 flex-shrink-0 w-full sm:w-56">
+                <img src={videoData.thumbnail} alt={videoData.title} className="w-full aspect-video object-cover" />
+                {videoData.duration > 0 && (
+                  <span className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-2 py-1 rounded-md text-xs font-medium text-slate-200">{formatTime(videoData.duration)}</span>
+                )}
+              </div>
               <div className="space-y-2 text-center sm:text-left flex-1">
                 <h2 className="text-lg font-bold text-slate-100 line-clamp-2">{videoData.title}</h2>
-                <p className="text-xs font-medium text-slate-400">Stream Source Ready</p>
+                <p className="text-xs font-medium text-slate-400">Channel: {videoData.author}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t border-slate-800">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Select Stream Quality</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto pr-1">
+                {videoData.formats.map((fmt) => {
+                  const isSelected = String(fmt.itag) === String(selectedItag);
+                  return (
+                    <button key={fmt.itag} type="button" onClick={() => setSelectedItag(fmt.itag)} className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all duration-200 ${isSelected ? 'bg-red-600/10 border-red-500 text-white shadow-md shadow-red-500/10' : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}>
+                      <div className="flex items-center gap-2.5">
+                        {fmt.hasVideo ? <Film className="w-4 h-4 text-rose-400" /> : <Music className="w-4 h-4 text-emerald-400" />}
+                        <span className="text-sm font-semibold">{fmt.qualityLabel}</span>
+                      </div>
+                      <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">{fmt.container}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <button onClick={handleDownload} className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition shadow-xl shadow-emerald-600/20">
               <Download className="w-5 h-5" />
-              <span>Download HD File</span>
+              <span>Download Selected Media Stream</span>
             </button>
           </div>
         )}

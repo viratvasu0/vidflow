@@ -7,7 +7,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Please enter a valid YouTube URL.' }, { status: 400 });
     }
 
-    // Extract Video ID
+    // Extract 11-character Video ID
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     const videoId = (match && match[2].length === 11) ? match[2] : null;
@@ -16,44 +16,69 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid YouTube URL structure.' }, { status: 400 });
     }
 
-    // Request stream data via public proxy API
-    const response = await fetch(`https://api.cobalt.tools/api/json`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        videoQuality: 'max'
-      })
-    });
+    // List of reliable Piped instances to query for stream metadata
+    const instances = [
+      'https://pipedapi.kavin.rocks',
+      'https://api.piped.privacydev.net',
+      'https://pipedapi.lunar.icu'
+    ];
 
-    const data = await response.json();
-
-    if (data.status === 'error' || data.status === 'picker') {
-      throw new Error(data.text || 'Extraction failed');
+    let data = null;
+    for (const instance of instances) {
+      try {
+        const res = await fetch(`${instance}/streams/${videoId}`, { cache: 'no-store' });
+        if (res.ok) {
+          data = await res.json();
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
     }
 
-    // Build standard format response
+    if (!data) {
+      return NextResponse.json({ error: 'Video streams unavailable right now. Please try again.' }, { status: 500 });
+    }
+
+    // Extract available video formats
+    const videoStreams = (data.videoStreams || [])
+      .filter(s => s.url)
+      .map((s, index) => ({
+        itag: `piped_${index}`,
+        qualityLabel: s.quality || 'Video Stream',
+        container: s.format || 'mp4',
+        hasVideo: true,
+        hasAudio: !s.videoOnly,
+        downloadUrl: s.url
+      }));
+
+    // Extract available audio streams
+    const audioStreams = (data.audioStreams || [])
+      .filter(s => s.url)
+      .map((s, index) => ({
+        itag: `audio_${index}`,
+        qualityLabel: `Audio Only (${s.bitrate ? Math.round(s.bitrate / 1000) : 128} kbps)`,
+        container: s.format || 'm4a',
+        hasVideo: false,
+        hasAudio: true,
+        downloadUrl: s.url
+      }));
+
+    const formats = [...videoStreams, ...audioStreams];
+
+    if (formats.length === 0) {
+      return NextResponse.json({ error: 'No downloadable streams found for this video.' }, { status: 500 });
+    }
+
     return NextResponse.json({
-      title: `YouTube Video (${videoId})`,
-      thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-      duration: 0,
-      author: 'YouTube Content',
-      formats: [
-        {
-          itag: 'cobalt_video',
-          qualityLabel: 'Best Quality Available (HD)',
-          container: 'mp4',
-          hasVideo: true,
-          hasAudio: true,
-          downloadUrl: data.url
-        }
-      ]
+      title: data.title || `YouTube Video (${videoId})`,
+      thumbnail: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      duration: data.duration || 0,
+      author: data.uploader || 'YouTube Channel',
+      formats
     });
   } catch (err) {
     console.error('Extraction Error:', err);
-    return NextResponse.json({ error: 'Unable to process video link right now. Please verify the URL.' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process YouTube link. Try another video.' }, { status: 500 });
   }
 }
